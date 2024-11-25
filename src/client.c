@@ -6,16 +6,9 @@
 /*   By: chlimous <chlimous@student.42.fr>	    +#+  +:+	   +#+	      */
 /*						  +#+#+#+#+#+	+#+	      */
 /*   Created: 2023/12/08 23:49:03 by chlimous	       #+#    #+#	      */
-/*   Updated: 2024/01/06 22:45:28 by chlimous         ###   ########.fr       */
+/*   Updated: 2024/04/29 03:34:02 by chlimous         ###   ########.fr       */
 /*									      */
 /* ************************************************************************** */
-
-/******************************************************************************/
-/*
-* @file client.c
-* @brief Client's source file.
-*/
-/******************************************************************************/
 
 #include "minitalk.h"
 
@@ -23,10 +16,23 @@ bool	g_signal_received; ///< Acknowledgment of receipt
 
 /******************************************************************************/
 /*
-* @brief Sends a bit to the server and waits for response.
+* @brief SIGUSR1 signal handle, handling receipt acknowledgment
 *
-* @param bit Bit to send.
-* @param pid Server PID.
+* @param signum SIGUSR1
+*/
+/******************************************************************************/
+static void	receipt_acknowledgment(int signum)
+{
+	(void)signum;
+	g_signal_received = 1;
+}
+
+/******************************************************************************/
+/*
+* @brief Sends a bit to the server and waits for response
+*
+* @param bit Bit to send
+* @param pid Server PID
 */
 /******************************************************************************/
 static void	send_bit(int bit, pid_t pid)
@@ -47,52 +53,48 @@ static void	send_bit(int bit, pid_t pid)
 
 /******************************************************************************/
 /*
-* @brief Sends a chararacter to the server, one bit at a time, MSB to LSB.
+* @brief Sends chararacter to the server, one bit at a time, MSB to LSB
 *
-* @param c Character to send.
-* @param sent_bits Stop condition (recursion).
-* @param pid Server PID.
+* @param c Character to send
+* @param sent_bits Stop condition (recursion)
+* @param pid Server PID
 */
 /******************************************************************************/
 static void	send_char(int c, int sent_bits, pid_t pid)
 {
-	sent_bits++;
+	++sent_bits;
 	if (sent_bits < 8)
-		send_char(c / 2, sent_bits, pid);
-	if (c % 2 == 1)
+		send_char(c >> 1, sent_bits, pid);
+	if ((c & 1) == 1)
 		send_bit(1, pid);
 	else
 		send_bit(0, pid);
 }
 
-/******************************************************************************/
-/*
-* @brief SIGUSR1 signal handler. Handling receipt acknowledgment.
-*
-* @param signum SIGUSR1.
-*/
-/******************************************************************************/
-static void	receipt_acknowledgment(int signum)
+/******************************************************************************
+ * @brief Sends string to the server, one character at a time
+ * 
+ * @param str String
+ * @param pid Server PID
+******************************************************************************/
+static void	send_string(char *str, int pid)
 {
-	(void)signum;
-	g_signal_received = 1;
+	while (*str)
+	{
+		send_char(*str, 0, pid);
+		++str;
+	}
+	send_char(0, 0, pid);
+	ft_printf("Successful.\n");
 }
 
 int	main(int argc, char **argv)
 {
-	struct sigaction	handler1;
+	struct sigaction	sig_hook;
 
-	ft_bzero(&handler1, sizeof(struct sigaction));
-	handler1.sa_handler = &receipt_acknowledgment;
-	sigaction(SIGUSR1, &handler1, NULL);
-	if (!(argc == 3 && ft_atoi(argv[1]) > 0))
+	if (argc != 3 || ft_atoi(argv[1]) < 0)
 		return (EXIT_FAILURE);
-	while (*argv[2])
-	{
-		send_char((unsigned char)*argv[2], 0, ft_atoi(argv[1]));
-		argv[2]++;
-	}
-	send_char((unsigned char)0, 0, ft_atoi(argv[1]));
-	ft_printf("Successful.\n");
+	init_signal_client(&sig_hook, SIGUSR1, &receipt_acknowledgment);
+	send_string(argv[2], ft_atoi(argv[1]));
 	return (EXIT_SUCCESS);
 }

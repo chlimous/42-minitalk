@@ -6,25 +6,25 @@
 /*   By: chlimous <chlimous@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/10/28 19:29:46 by chlimous          #+#    #+#             */
-/*   Updated: 2023/11/21 23:20:16 by chlimous         ###   ########.fr       */
+/*   Updated: 2024/09/15 04:32:20 by chlimous         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "libft.h"
+#include <stdlib.h>
 
-static size_t	size_alloc(long n)
+static int	size_alloc(ssize_t n)
 {
-	size_t	size;
+	int	size;
 
 	size = 2;
 	if (n < 0)
 	{
-		size++;
+		++size;
 		n = -n;
 	}
 	while (n / 10 != 0)
 	{
-		size++;
+		++size;
 		n /= 10;
 	}
 	return (size);
@@ -32,29 +32,29 @@ static size_t	size_alloc(long n)
 
 char	*ft_itoa(int n)
 {
-	size_t	size;
+	int		size;
 	int		i;
 	char	*res;
-	long	nlong;
+	ssize_t	ntemp;
 
-	nlong = n;
-	size = size_alloc(nlong);
+	ntemp = n;
+	size = size_alloc(ntemp);
 	res = malloc(sizeof(char) * size);
 	if (!res)
 		return (NULL);
-	if (nlong < 0)
+	if (ntemp < 0)
 	{
 		res[0] = '-';
-		nlong = -nlong;
+		ntemp = -ntemp;
 	}
 	res[size - 1] = '\0';
 	i = size - 2;
-	while (nlong / 10 != 0)
+	while (ntemp / 10 != 0)
 	{
-		res[i] = nlong % 10 + 48;
-		nlong /= 10;
-		i--;
+		res[i] = ntemp % 10 + 48;
+		ntemp /= 10;
+		--i;
 	}
-	res[i] = nlong % 10 + 48;
+	res[i] = ntemp % 10 + 48;
 	return (res);
 }

@@ -6,16 +6,13 @@
 /*   By: chlimous <chlimous@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/10/16 23:07:56 by chlimous          #+#    #+#             */
-/*   Updated: 2023/10/16 23:09:16 by chlimous         ###   ########.fr       */
+/*   Updated: 2024/09/14 22:27:17 by chlimous         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
-
-#include "libft.h"
 
 int	ft_isprint(int c)
 {
 	if (c >= 32 && c <= 126)
 		return (1);
-	else
-		return (0);
+	return (0);
 }

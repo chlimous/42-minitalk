@@ -6,64 +6,54 @@
 /*   By: chlimous <chlimous@student.42.fr>	    +#+  +:+	   +#+	      */
 /*						  +#+#+#+#+#+	+#+	      */
 /*   Created: 2023/12/08 20:12:22 by chlimous	       #+#    #+#	      */
-/*   Updated: 2024/01/06 22:18:54 by chlimous         ###   ########.fr       */
+/*   Updated: 2024/11/25 02:36:33 by chlimous         ###   ########.fr       */
 /*									      */
 /* ************************************************************************** */
-
-/******************************************************************************/
-/*
-* @file server.c
-* @brief Server's source file.
-*/
-/******************************************************************************/
 
 #include "minitalk.h"
 
 /******************************************************************************/
 /*
-* @brief Converts bits to characters and print the string once all characters\
-	are received.
+* @brief Converts bits to characters and print the string once all characters \
+	are received
 *
-* @param bit Bit received.
-* @param sender_pid Client that send the signal.
+* @param bit Bit received
+* @param sender_pid Client that sends the signal
 */
 /******************************************************************************/
 static void	print_characters(int bit, pid_t sender_pid)
 {
-	static t_advlist		advlst;
-	static unsigned char	c;
-	static int				received_bits;
-	static pid_t			current_sender_pid;
-	char					*str;
+	static t_buffer	buffer;
+	char			*str;
 
-	if (sender_pid != current_sender_pid)
+	if (sender_pid != buffer.sender_pid)
 	{
-		clearstatic(&advlst, &c, &received_bits);
-		current_sender_pid = sender_pid;
+		clear_buffer(&buffer);
+		buffer.sender_pid = sender_pid;
 	}
-	c = c * 2 + bit;
-	if (++received_bits == 8)
+	buffer.current_char.c = (buffer.current_char.c << 1) | bit;
+	++buffer.current_char.received_bits;
+	if (buffer.current_char.received_bits == 8)
 	{
-		received_bits = 0;
-		add_to_list(&advlst, c);
-		if (c == '\0')
+		buffer.current_char.received_bits = 0;
+		add_node(&buffer, buffer.current_char.c);
+		if (buffer.current_char.c == '\0')
 		{
-			str = build_str(&advlst);
+			str = buffer_to_string(&buffer);
 			ft_printf("%s\n", str);
 			free(str);
-			clearstatic(&advlst, &c, &received_bits);
 		}
 	}
-	kill(current_sender_pid, SIGUSR1);
+	kill(buffer.sender_pid, SIGUSR1);
 }
 
 /******************************************************************************/
 /*
-* @brief SIGUSR1 signal handler. Bit 0.
+* @brief SIGUSR1 signal handler (bit 0)
 *
-* @param signum SIGUSR1.
-* @param info To capture client's PID.
-* @param context Void.
+* @param signum SIGUSR1
+* @param info Contains PID of client
+* @param context Void
 */
 /******************************************************************************/
 static void	handle_sigusr1(int signum, siginfo_t *info, void *context)
@@ -75,11 +65,11 @@ static void	handle_sigusr1(int signum, siginfo_t *info, void *context)
 
 /******************************************************************************/
 /*
-* @brief SIGURS2 signal handler. Bit 1. 
+* @brief SIGURS2 signal handler (bit 1)
 *
-* @param signum SIGUSR1. Bit 1.
-* @param info To capture client's PID.
-* @param context Void.
+* @param signum SIGUSR2
+* @param info Contains PID of client
+* @param context Void
 */
 /******************************************************************************/
 static void	handle_sigusr2(int signum, siginfo_t *info, void *context)
@@ -89,23 +79,28 @@ static void	handle_sigusr2(int signum, siginfo_t *info, void *context)
 	print_characters(1, info->si_pid);
 }
 
+/******************************************************************************
+ * @brief Initializes sigaction structure
+ * 
+******************************************************************************/
+static void	init_signal_server(struct sigaction *sig_hook, int sig, \
+		void (*handler)(int, siginfo_t *, void *))
+{
+	ft_bzero(sig_hook, sizeof(struct sigaction));
+	sigaddset(&sig_hook->sa_mask, SIGUSR1);
+	sigaddset(&sig_hook->sa_mask, SIGUSR2);
+	sig_hook->sa_flags = SA_SIGINFO;
+	sig_hook->sa_sigaction = handler;
+	sigaction(sig, sig_hook, NULL);
+}
+
 int	main(void)
 {
-	struct sigaction	handler1;
-	struct sigaction	handler2;
+	struct sigaction	sig_hook1;
+	struct sigaction	sig_hook2;
 
-	ft_bzero(&handler1, sizeof(struct sigaction));
-	sigaddset(&handler1.sa_mask, SIGUSR1);
-	sigaddset(&handler1.sa_mask, SIGUSR2);
-	handler1.sa_flags = SA_SIGINFO;
-	handler1.sa_sigaction = &handle_sigusr1;
-	sigaction(SIGUSR1, &handler1, NULL);
-	ft_bzero(&handler2, sizeof(struct sigaction));
-	sigaddset(&handler2.sa_mask, SIGUSR1);
-	sigaddset(&handler2.sa_mask, SIGUSR2);
-	handler2.sa_flags = SA_SIGINFO;
-	handler2.sa_sigaction = &handle_sigusr2;
-	sigaction(SIGUSR2, &handler2, NULL);
+	init_signal_server(&sig_hook1, SIGUSR1, &handle_sigusr1);
+	init_signal_server(&sig_hook2, SIGUSR2, &handle_sigusr2);
 	ft_printf("Server PID: %d\n", getpid());
 	while (1)
 	{
